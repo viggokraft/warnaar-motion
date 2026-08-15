@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Warnaar &sect;5.2 &mdash; rules of motion, verified</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--line:#272b34;--ink:#e8eaed;--dim:#9aa1ac;
+  --accent:#7cc4ff;--good:#5fd08a;--bad:#ff7b72;--warn:#e3b341}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:18px 22px 10px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:17px;font-weight:600}
+h1 small{color:var(--dim);font-weight:400;margin-left:10px;font-size:13px}
+.wrap{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 58px)}
+.side{border-right:1px solid var(--line);padding:16px 18px;background:var(--panel)}
+.main{padding:16px 22px 40px;overflow:auto}
+.grp{margin-bottom:20px}
+.grp h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--dim);margin:0 0 8px;font-weight:600}
+label{display:flex;justify-content:space-between;align-items:center;margin:6px 0;color:var(--dim)}
+select{background:#0e1015;color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:5px 8px;font:inherit;font-size:13px;max-width:170px}
+input[type=range]{width:130px}
+button{background:#1e232c;color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:6px 11px;font:inherit;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+.row{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+canvas{background:#0b0d11;border:1px solid var(--line);border-radius:8px;display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:14px 16px;margin-bottom:16px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:600}
+.card h3 span{color:var(--dim);font-weight:400}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11.5px;
+  border:1px solid var(--line);color:var(--dim);margin:2px 5px 2px 0}
+.ok{color:var(--good);border-color:#2c5c40}
+.no{color:var(--bad);border-color:#5c2f2c}
+.okt{color:var(--good)} .not{color:var(--bad)}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th,td{text-align:right;padding:3px 9px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:500}
+td:first-child,th:first-child{text-align:left}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.note{color:var(--dim);font-size:12.5px;margin:6px 0 0}
+.sect{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px}
+.sec{border:1px solid var(--line);border-radius:7px;padding:7px 9px;
+  background:#0e1015;cursor:pointer}
+.sec:hover{border-color:var(--accent)}
+.sec.active{border-color:var(--accent);background:#101722}
+.flag{padding:8px 11px;border-radius:7px;margin:9px 0;font-size:13px}
+.flag.ok{background:#12261a;border:1px solid #2c5c40}
+.flag.no{background:#26130f;border:1px solid #5c2f2c}
+.rules p{margin:6px 0;color:var(--ink)}
+.rules .note{margin-top:2px}
+kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px;color:var(--dim)}
+</style>
+<header><h1>Warnaar &sect;5.2 &mdash; the rules of motion, implemented and verified live
+<small>k-restricted partitions, undressed (N = 1)</small></h1></header>
+<div class="wrap">
+<div class="side">
+  <div class="grp"><h2>Parameters</h2>
+    <label>k <select id="k"></select></label>
+    <label>L (path length) <select id="L"></select></label>
+  </div>
+  <div class="grp"><h2>Browse paths</h2>
+    <label>content <select id="sector"></select></label>
+    <label>path <input type="range" id="pathIdx" min="0" value="0"></label>
+    <div class="mono" id="pathTxt" style="color:var(--accent);margin:4px 0 2px"></div>
+    <div class="note" id="pathInfo"></div>
+    <div class="row"><button id="prev">&#9664;</button><button id="next">&#9654;</button>
+      <button id="rand">random</button></div>
+  </div>
+  <div class="grp"><h2>Animate the construction</h2>
+    <div class="row">
+      <button id="toStart">&#9198; minimal</button><button id="back">&#9664;</button>
+      <button id="fwd">&#9654;</button><button id="toEnd">path &#9197;</button></div>
+    <div class="row">
+      <button id="playR">&#9664; play reduce</button>
+      <button id="playF">play build &#9654;</button></div>
+    <p class="note">Arrow keys step too. Each frame is one elementary move = one power of q.</p>
+  </div>
+  <div class="grp"><h2>Live verification</h2><div id="checks"></div></div>
+</div>
+<div class="main">
+  <div class="card">
+    <h3>Lattice path <span>&mdash; grey: frozen / unmoved &middot; blue: the moving particle</span></h3>
+    <canvas id="cv" width="900" height="260"></canvas>
+    <div class="note" id="frameNote"></div>
+  </div>
+  <div class="card rules">
+    <h3>The rules of motion <span>&mdash; Definition 10, Figures 5&ndash;6, Proposition 4</span></h3>
+    <p>Every path is built from the <b>minimal path</b> of some content
+      n = (n&#8321;,&hellip;,n&#8342;): particles in a single column each, largest charge leftmost,
+      one empty column between neighbours. Particles then move <b>one at a time, in a fixed
+      order</b>: all charge-1 particles first, then charge-2, &hellip;, then charge-k; within a
+      charge, the rightmost first. A particle that stops never moves again.</p>
+    <p>The moving particle of charge t occupies a <b>column pair</b>: t&minus;r units at column x,
+      r units at x+1. One elementary move pours one unit from x to x+1 (weight +1). It is allowed
+      iff the pair ahead stays within the particle&rsquo;s <em>own</em> charge:
+      <span class="mono">r + 1 + f(x+2) &le; t</span> &mdash; the bound is t, not k.</p>
+    <p>When the pour reaches <span class="mono">r = t &minus; f(x+2)</span> exactly, the particle
+      <b>re-bases</b>: the f(x+2) units ahead are absorbed into the mover and the same number are
+      emitted from its tail at x &mdash; the passed particle re-appears behind. With f(x+2) = 0
+      this is ordinary free motion. That single rule reproduces all of Figures 5 and 6: the
+      blocked configurations are exactly those where no pour is allowed.</p>
+    <p class="note">Uniqueness of the reduction (Proposition 4) is not assumed anywhere &mdash;
+      it is checked live, path by path, in the badge on the left and the panel below.</p>
+  </div>
+  <div class="card">
+    <h3>Sectors <span>&mdash; click one to browse only its paths</span></h3>
+    <div id="sectors" class="sect"></div>
+    <div id="sectorMsg"></div>
+  </div>
+  <div class="card">
+    <h3>Proposition 5 <span>&mdash; three independent counts of paths by weight</span></h3>
+    <table id="prop5"></table>
+  </div>
+</div>
+</div>
+<script>
+/* Warnaar §5.2 rules of motion — JS engine (mirrors engine.py exactly). */
+function validPath(f,k){const g=[0,...f,0];
+  for(let i=0;i<g.length-1;i++) if(g[i]+g[i+1]>k) return false; return true;}
+function allPaths(k,L){const n=L-1,f=new Array(n).fill(0),out=[];
+  (function rec(i){ if(i===n){out.push(f.slice());return;}
+    for(let v=0;v<=k;v++){ if(i>0&&f[i-1]+v>k) continue; f[i]=v; rec(i+1);} f[i]=0;})(0);
+  return out;}
+function weight(f){return f.reduce((s,h,i)=>s+(i+1)*h,0);}
+function contentsList(k,L){const out=[];
+  (function rec(t,cur,used){ if(t===0){out.push(cur.slice());return;}
+    for(let v=0;v<=Math.floor((L-used)/2);v++) rec(t-1,[v,...cur],used+2*v);})(k,[],0);
+  return out.filter(n=>2*n.reduce((a,b)=>a+b,0)<=L);}
+function minimalLayout(n,k){const parts=[];let x=1;
+  for(let t=k;t>=1;t--) for(let i=0;i<n[t-1];i++){parts.push([t,x]);x+=2;}
+  const order=[];
+  for(let t=1;t<=k;t++) order.push(...parts.filter(p=>p[0]===t).sort((a,b)=>b[1]-a[1]));
+  return {parts,order};}
+function minimalHeights(n,k,L){const g=new Array(L+3).fill(0);
+  for(const [t,x] of minimalLayout(n,k).parts) g[x]+=t; return g;}
+
+function motionEnumerate(k,L){
+  const H=L-1, map=new Map(), dup=[];
+  for(const n of contentsList(k,L)){
+    const {parts,order}=minimalLayout(n,k);
+    const g0=new Array(L+3).fill(0);
+    for(const [t,x] of parts) g0[x]+=t;
+    (function rec(i,g,ev){
+      if(i===order.length){
+        const key=g.slice(1,L).join(',');
+        if(map.has(key)) dup.push(key);
+        else map.set(key,{n:n.slice(),ev:ev.slice()});
+        return;}
+      const [t,x0]=order[i];
+      g=g.slice(); g[x0]-=t;
+      let x=x0,r=0,e=0;
+      for(;;){
+        const gf=g.slice(); gf[x]+=t-r; if(r) gf[x+1]+=r;
+        ev.push(e); rec(i+1,gf,ev); ev.pop();
+        if(x+1>H) break;
+        const ahead=(x+2<=H)?g[x+2]:0;
+        if(r+1+ahead>t) break;
+        r++; e++;
+        if(r===t-ahead){                    // rebase: absorb ahead, emit tail
+          if(ahead){ g=g.slice(); g[x]+=ahead; g[x+2]-=ahead; }
+          x=x+1; r=ahead;}
+      }
+    })(0,g0,[]);
+  }
+  return {map,dup};}
+
+function replayFrames(k,L,n,ev){
+  const H=L-1, {order}=minimalLayout(n,k);
+  const g=minimalHeights(n,k,L);
+  const frames=[{bg:g.slice(1,L),mover:null,
+    note:'minimal path — content ('+n.join(',')+')'}];
+  order.forEach(([t,x0],i)=>{
+    const e=ev[i]; if(!e) return;
+    g[x0]-=t; let x=x0,r=0;
+    for(let j=1;j<=e;j++){
+      const ahead=(x+2<=H)?g[x+2]:0;
+      r++;
+      if(r===t-ahead){ if(ahead){g[x]+=ahead;g[x+2]-=ahead;} x=x+1; r=ahead; }
+      frames.push({bg:g.slice(1,L),mover:{t,x,r},
+        note:'particle '+(i+1)+' (charge '+t+') — move '+j+' of '+e});
+    }
+    g[x]+=t-r; if(r) g[x+1]+=r;
+  });
+  frames.push({bg:g.slice(1,L),mover:null,note:'the finished path'});
+  return frames;}
+
+function frameHeights(fr,L){
+  const h=fr.bg.slice();
+  if(fr.mover){const {t,x,r}=fr.mover;
+    h[x-1]+=t-r; if(r) h[x]+=r;}
+  return h;}
+
+function mSystem(k,L,n){
+  const A=[],rhs=[];
+  for(let a=0;a<k;a++){A.push([]);
+    for(let b=0;b<k;b++){
+      const Ik=(Math.abs(a-b)===1?1:0)+((a===b&&a===k-1)?1:0);
+      A[a].push(2*(a===b?1:0)-Ik);}
+    rhs.push(L*(a===k-1?1:0)-2*n[a]);}
+  const M=A.map(r=>r.slice()),v=rhs.slice();
+  for(let c=0;c<k;c++){
+    let p=c; while(Math.abs(M[p][c])<1e-9)p++;
+    [M[c],M[p]]=[M[p],M[c]]; [v[c],v[p]]=[v[p],v[c]];
+    const d=M[c][c];
+    for(let j=0;j<k;j++)M[c][j]/=d; v[c]/=d;
+    for(let r2=0;r2<k;r2++) if(r2!==c&&Math.abs(M[r2][c])>1e-12){
+      const f=M[r2][c];
+      for(let j=0;j<k;j++)M[r2][j]-=f*M[c][j]; v[r2]-=f*v[c];}}
+  const m=v.map(x=>Math.round(x));
+  for(let a=0;a<k;a++){let s=0;
+    for(let b=0;b<k;b++)s+=A[a][b]*m[b];
+    if(s!==rhs[a]) return null;}
+  return m.some(x=>x<0)?null:m;}
+
+function polyMul(p,q){const r=new Array(p.length+q.length-1).fill(0);
+  for(let i=0;i<p.length;i++) if(p[i])
+    for(let j=0;j<q.length;j++) r[i+j]+=p[i]*q[j];
+  return r;}
+function polyDivExact(p,d){p=p.slice();
+  const out=new Array(p.length-d.length+1).fill(0);
+  for(let i=out.length-1;i>=0;i--){
+    const c=p[i+d.length-1]/d[d.length-1];
+    out[i]=c;
+    if(c) for(let j=0;j<d.length;j++) p[i+j]-=c*d[j];}
+  return p.every(v=>v===0)?out:null;}
+function gaussPoly(m,n){let poly=[1];
+  for(let i=1;i<=n;i++){
+    const num=[1,...new Array(m+i-1).fill(0),-1];
+    const den=[1,...new Array(i-1).fill(0),-1];
+    poly=polyDivExact(polyMul(poly,num),den);
+    if(!poly) return null;}
+  return poly;}
+function wMin(n){let s=0;
+  for(let a=1;a<=n.length;a++) for(let b=1;b<=n.length;b++)
+    s+=Math.min(a,b)*n[a-1]*n[b-1];
+  return s;}
+
+
+
+
+/* ---------------- UI ---------------- */
+const REF = {"2,7": {"nPaths": 157, "byWeight": {"0": 1, "6": 6, "12": 12, "5": 4, "11": 10, "10": 10, "4": 3, "16": 11, "9": 8, "15": 11, "8": 8, "14": 12, "20": 6, "3": 2, "13": 11, "7": 6, "19": 6, "18": 9, "17": 9, "2": 2, "22": 3, "21": 4, "24": 1, "1": 1, "23": 1}, "minimal": {"0,0": [0, 0, 0, 0, 0, 0], "1,0": [1, 0, 0, 0, 0, 0], "2,0": [1, 0, 1, 0, 0, 0], "3,0": [1, 0, 1, 0, 1, 0], "0,1": [2, 0, 0, 0, 0, 0], "1,1": [2, 0, 1, 0, 0, 0], "2,1": [2, 0, 1, 0, 1, 0], "0,2": [2, 0, 2, 0, 0, 0], "1,2": [2, 0, 2, 0, 1, 0], "0,3": [2, 0, 2, 0, 2, 0]}}, "2,9": {"nPaths": 793, "byWeight": {"0": 1, "8": 10, "16": 31, "7": 7, "15": 27, "14": 25, "6": 6, "22": 42, "13": 21, "21": 40, "12": 19, "20": 40, "28": 33, "5": 4, "19": 36, "11": 15, "27": 34, "18": 36, "26": 38, "10": 14, "17": 32, "25": 38, "24": 41, "4": 3, "32": 19, "9": 11, "23": 40, "31": 21, "30": 26, "29": 28, "36": 7, "3": 2, "35": 8, "34": 12, "33": 14, "2": 2, "38": 3, "37": 4, "40": 1, "1": 1, "39": 1}, "minimal": {"0,0": [0, 0, 0, 0, 0, 0, 0, 0], "1,0": [1, 0, 0, 0, 0, 0, 0, 0], "2,0": [1, 0, 1, 0, 0, 0, 0, 0], "3,0": [1, 0, 1, 0, 1, 0, 0, 0], "4,0": [1, 0, 1, 0, 1, 0, 1, 0], "0,1": [2, 0, 0, 0, 0, 0, 0, 0], "1,1": [2, 0, 1, 0, 0, 0, 0, 0], "2,1": [2, 0, 1, 0, 1, 0, 0, 0], "3,1": [2, 0, 1, 0, 1, 0, 1, 0], "0,2": [2, 0, 2, 0, 0, 0, 0, 0], "1,2": [2, 0, 2, 0, 1, 0, 0, 0], "2,2": [2, 0, 2, 0, 1, 0, 1, 0], "0,3": [2, 0, 2, 0, 2, 0, 0, 0], "1,3": [2, 0, 2, 0, 2, 0, 1, 0], "0,4": [2, 0, 2, 0, 2, 0, 2, 0]}}, "2,11": {"nPaths": 4004, "byWeight": {"0": 1, "10": 16, "20": 73, "9": 12, "19": 63, "18": 58, "8": 10, "28": 136, "17": 49, "27": 127, "16": 44, "26": 122, "36": 153, "7": 7, "25": 112, "15": 37, "35": 152, "24": 106, "34": 156, "14": 32, "23": 95, "33": 153, "32": 154, "6": 6, "22": 89, "42": 114, "13": 26, "31": 148, "21": 79, "41": 120, "30": 147, "40": 131, "12": 23, "29": 139, "39": 135, "38": 144, "48": 55, "5": 4, "37": 146, "11": 18, "47": 62, "46": 74, "45": 82, "44": 94, "43": 101, "4": 3, "52": 24, "51": 29, "50": 38, "49": 44, "56": 7, "3": 2, "55": 9, "54": 14, "53": 17, "2": 2, "58": 3, "57": 4, "60": 1, "1": 1, "59": 1}, "minimal": {"0,0": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,0": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "2,0": [1, 0, 1, 0, 0, 0, 0, 0, 0, 0], "3,0": [1, 0, 1, 0, 1, 0, 0, 0, 0, 0], "4,0": [1, 0, 1, 0, 1, 0, 1, 0, 0, 0], "5,0": [1, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,1": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,1": [2, 0, 1, 0, 0, 0, 0, 0, 0, 0], "2,1": [2, 0, 1, 0, 1, 0, 0, 0, 0, 0], "3,1": [2, 0, 1, 0, 1, 0, 1, 0, 0, 0], "4,1": [2, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,2": [2, 0, 2, 0, 0, 0, 0, 0, 0, 0], "1,2": [2, 0, 2, 0, 1, 0, 0, 0, 0, 0], "2,2": [2, 0, 2, 0, 1, 0, 1, 0, 0, 0], "3,2": [2, 0, 2, 0, 1, 0, 1, 0, 1, 0], "0,3": [2, 0, 2, 0, 2, 0, 0, 0, 0, 0], "1,3": [2, 0, 2, 0, 2, 0, 1, 0, 0, 0], "2,3": [2, 0, 2, 0, 2, 0, 1, 0, 1, 0], "0,4": [2, 0, 2, 0, 2, 0, 2, 0, 0, 0], "1,4": [2, 0, 2, 0, 2, 0, 2, 0, 1, 0], "0,5": [2, 0, 2, 0, 2, 0, 2, 0, 2, 0]}}, "2,13": {"nPaths": 20216, "byWeight": {"0": 1, "12": 25, "24": 159, "11": 19, "23": 138, "22": 124, "10": 16, "34": 393, "21": 107, "33": 364, "20": 95, "32": 342, "44": 597, "9": 12, "31": 312, "19": 80, "43": 580, "30": 291, "42": 572, "18": 71, "29": 263, "41": 550, "40": 536, "8": 10, "28": 242, "52": 577, "17": 59, "39": 511, "27": 217, "51": 586, "38": 493, "50": 602, "16": 51, "26": 198, "37": 465, "49": 604, "36": 445, "48": 614, "60": 380, "7": 7, "25": 175, "47": 609, "15": 42, "35": 415, "59": 405, "46": 611, "58": 439, "45": 601, "57": 463, "14": 36, "56": 494, "55": 513, "54": 541, "6": 6, "66": 201, "13": 29, "53": 555, "65": 225, "64": 257, "63": 283, "62": 318, "61": 344, "72": 73, "5": 4, "71": 86, "70": 107, "69": 125, "68": 150, "67": 171, "4": 3, "76": 27, "75": 34, "74": 46, "73": 56, "80": 7, "3": 2, "79": 9, "78": 15, "77": 19, "2": 2, "82": 3, "81": 4, "84": 1, "1": 1, "83": 1}, "minimal": {"0,0": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,0": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "2,0": [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "3,0": [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], "4,0": [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0], "5,0": [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0], "6,0": [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,1": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,1": [2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "2,1": [2, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], "3,1": [2, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0], "4,1": [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0], "5,1": [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,2": [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,2": [2, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0], "2,2": [2, 0, 2, 0, 1, 0, 1, 0, 0, 0, 0, 0], "3,2": [2, 0, 2, 0, 1, 0, 1, 0, 1, 0, 0, 0], "4,2": [2, 0, 2, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,3": [2, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0], "1,3": [2, 0, 2, 0, 2, 0, 1, 0, 0, 0, 0, 0], "2,3": [2, 0, 2, 0, 2, 0, 1, 0, 1, 0, 0, 0], "3,3": [2, 0, 2, 0, 2, 0, 1, 0, 1, 0, 1, 0], "0,4": [2, 0, 2, 0, 2, 0, 2, 0, 0, 0, 0, 0], "1,4": [2, 0, 2, 0, 2, 0, 2, 0, 1, 0, 0, 0], "2,4": [2, 0, 2, 0, 2, 0, 2, 0, 1, 0, 1, 0], "0,5": [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 0, 0], "1,5": [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1, 0], "0,6": [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0]}}, "3,7": {"nPaths": 707, "byWeight": {"0": 1, "6": 8, "12": 24, "18": 39, "5": 5, "11": 19, "17": 35, "10": 17, "16": 34, "15": 31, "4": 4, "22": 39, "9": 14, "21": 39, "14": 29, "20": 40, "8": 12, "26": 29, "13": 25, "19": 38, "25": 31, "24": 36, "30": 15, "3": 3, "7": 9, "23": 36, "29": 17, "28": 22, "27": 25, "2": 2, "32": 8, "31": 10, "34": 3, "33": 5, "36": 1, "1": 1, "35": 1}, "minimal": {"0,0,0": [0, 0, 0, 0, 0, 0], "1,0,0": [1, 0, 0, 0, 0, 0], "2,0,0": [1, 0, 1, 0, 0, 0], "3,0,0": [1, 0, 1, 0, 1, 0], "0,1,0": [2, 0, 0, 0, 0, 0], "1,1,0": [2, 0, 1, 0, 0, 0], "2,1,0": [2, 0, 1, 0, 1, 0], "0,2,0": [2, 0, 2, 0, 0, 0], "1,2,0": [2, 0, 2, 0, 1, 0], "0,3,0": [2, 0, 2, 0, 2, 0], "0,0,1": [3, 0, 0, 0, 0, 0], "1,0,1": [3, 0, 1, 0, 0, 0], "2,0,1": [3, 0, 1, 0, 1, 0], "0,1,1": [3, 0, 2, 0, 0, 0], "1,1,1": [3, 0, 2, 0, 1, 0], "0,2,1": [3, 0, 2, 0, 2, 0], "0,0,2": [3, 0, 3, 0, 0, 0], "1,0,2": [3, 0, 3, 0, 1, 0], "0,1,2": [3, 0, 3, 0, 2, 0], "0,0,3": [3, 0, 3, 0, 3, 0]}}, "3,9": {"nPaths": 5864, "byWeight": {"0": 1, "8": 14, "16": 64, "24": 155, "7": 10, "15": 54, "23": 140, "14": 47, "22": 130, "21": 116, "6": 8, "30": 216, "13": 38, "29": 205, "20": 106, "28": 199, "12": 33, "36": 225, "19": 93, "27": 187, "35": 225, "18": 84, "26": 178, "34": 229, "42": 167, "5": 5, "11": 26, "25": 164, "33": 226, "17": 72, "41": 177, "32": 226, "40": 192, "10": 22, "31": 219, "39": 200, "38": 212, "37": 216, "4": 4, "46": 108, "9": 17, "45": 121, "44": 138, "43": 150, "50": 54, "49": 64, "48": 80, "47": 91, "54": 19, "3": 3, "53": 24, "52": 34, "51": 42, "2": 2, "56": 9, "55": 12, "58": 3, "57": 5, "60": 1, "1": 1, "59": 1}, "minimal": {"0,0,0": [0, 0, 0, 0, 0, 0, 0, 0], "1,0,0": [1, 0, 0, 0, 0, 0, 0, 0], "2,0,0": [1, 0, 1, 0, 0, 0, 0, 0], "3,0,0": [1, 0, 1, 0, 1, 0, 0, 0], "4,0,0": [1, 0, 1, 0, 1, 0, 1, 0], "0,1,0": [2, 0, 0, 0, 0, 0, 0, 0], "1,1,0": [2, 0, 1, 0, 0, 0, 0, 0], "2,1,0": [2, 0, 1, 0, 1, 0, 0, 0], "3,1,0": [2, 0, 1, 0, 1, 0, 1, 0], "0,2,0": [2, 0, 2, 0, 0, 0, 0, 0], "1,2,0": [2, 0, 2, 0, 1, 0, 0, 0], "2,2,0": [2, 0, 2, 0, 1, 0, 1, 0], "0,3,0": [2, 0, 2, 0, 2, 0, 0, 0], "1,3,0": [2, 0, 2, 0, 2, 0, 1, 0], "0,4,0": [2, 0, 2, 0, 2, 0, 2, 0], "0,0,1": [3, 0, 0, 0, 0, 0, 0, 0], "1,0,1": [3, 0, 1, 0, 0, 0, 0, 0], "2,0,1": [3, 0, 1, 0, 1, 0, 0, 0], "3,0,1": [3, 0, 1, 0, 1, 0, 1, 0], "0,1,1": [3, 0, 2, 0, 0, 0, 0, 0], "1,1,1": [3, 0, 2, 0, 1, 0, 0, 0], "2,1,1": [3, 0, 2, 0, 1, 0, 1, 0], "0,2,1": [3, 0, 2, 0, 2, 0, 0, 0], "1,2,1": [3, 0, 2, 0, 2, 0, 1, 0], "0,3,1": [3, 0, 2, 0, 2, 0, 2, 0], "0,0,2": [3, 0, 3, 0, 0, 0, 0, 0], "1,0,2": [3, 0, 3, 0, 1, 0, 0, 0], "2,0,2": [3, 0, 3, 0, 1, 0, 1, 0], "0,1,2": [3, 0, 3, 0, 2, 0, 0, 0], "1,1,2": [3, 0, 3, 0, 2, 0, 1, 0], "0,2,2": [3, 0, 3, 0, 2, 0, 2, 0], "0,0,3": [3, 0, 3, 0, 3, 0, 0, 0], "1,0,3": [3, 0, 3, 0, 3, 0, 1, 0], "0,1,3": [3, 0, 3, 0, 3, 0, 2, 0], "0,0,4": [3, 0, 3, 0, 3, 0, 3, 0]}}, "3,11": {"nPaths": 48620, "byWeight": {"0": 1, "10": 24, "20": 158, "30": 526, "9": 18, "19": 134, "29": 473, "18": 116, "28": 431, "27": 385, "8": 14, "38": 966, "17": 96, "37": 905, "26": 346, "36": 853, "16": 82, "46": 1337, "25": 305, "35": 790, "45": 1299, "24": 273, "34": 738, "44": 1266, "54": 1378, "7": 10, "15": 67, "33": 679, "43": 1218, "23": 237, "53": 1389, "32": 628, "42": 1178, "52": 1408, "14": 56, "41": 1122, "22": 210, "31": 572, "51": 1407, "40": 1076, "50": 1410, "21": 181, "39": 1017, "49": 1395, "48": 1387, "6": 8, "60": 1132, "13": 45, "59": 1179, "58": 1236, "47": 1358, "57": 1275, "56": 1319, "12": 38, "66": 741, "55": 1345, "65": 803, "64": 877, "63": 939, "62": 1009, "72": 364, "5": 5, "11": 29, "61": 1066, "71": 414, "70": 478, "69": 536, "68": 605, "67": 667, "4": 4, "76": 183, "75": 219, "74": 264, "73": 308, "80": 73, "79": 92, "78": 120, "77": 146, "84": 21, "3": 3, "83": 28, "82": 41, "81": 54, "2": 2, "86": 9, "85": 13, "88": 3, "87": 5, "90": 1, "1": 1, "89": 1}, "minimal": {"0,0,0": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,0,0": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "2,0,0": [1, 0, 1, 0, 0, 0, 0, 0, 0, 0], "3,0,0": [1, 0, 1, 0, 1, 0, 0, 0, 0, 0], "4,0,0": [1, 0, 1, 0, 1, 0, 1, 0, 0, 0], "5,0,0": [1, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,1,0": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,1,0": [2, 0, 1, 0, 0, 0, 0, 0, 0, 0], "2,1,0": [2, 0, 1, 0, 1, 0, 0, 0, 0, 0], "3,1,0": [2, 0, 1, 0, 1, 0, 1, 0, 0, 0], "4,1,0": [2, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,2,0": [2, 0, 2, 0, 0, 0, 0, 0, 0, 0], "1,2,0": [2, 0, 2, 0, 1, 0, 0, 0, 0, 0], "2,2,0": [2, 0, 2, 0, 1, 0, 1, 0, 0, 0], "3,2,0": [2, 0, 2, 0, 1, 0, 1, 0, 1, 0], "0,3,0": [2, 0, 2, 0, 2, 0, 0, 0, 0, 0], "1,3,0": [2, 0, 2, 0, 2, 0, 1, 0, 0, 0], "2,3,0": [2, 0, 2, 0, 2, 0, 1, 0, 1, 0], "0,4,0": [2, 0, 2, 0, 2, 0, 2, 0, 0, 0], "1,4,0": [2, 0, 2, 0, 2, 0, 2, 0, 1, 0], "0,5,0": [2, 0, 2, 0, 2, 0, 2, 0, 2, 0], "0,0,1": [3, 0, 0, 0, 0, 0, 0, 0, 0, 0], "1,0,1": [3, 0, 1, 0, 0, 0, 0, 0, 0, 0], "2,0,1": [3, 0, 1, 0, 1, 0, 0, 0, 0, 0], "3,0,1": [3, 0, 1, 0, 1, 0, 1, 0, 0, 0], "4,0,1": [3, 0, 1, 0, 1, 0, 1, 0, 1, 0], "0,1,1": [3, 0, 2, 0, 0, 0, 0, 0, 0, 0], "1,1,1": [3, 0, 2, 0, 1, 0, 0, 0, 0, 0], "2,1,1": [3, 0, 2, 0, 1, 0, 1, 0, 0, 0], "3,1,1": [3, 0, 2, 0, 1, 0, 1, 0, 1, 0], "0,2,1": [3, 0, 2, 0, 2, 0, 0, 0, 0, 0], "1,2,1": [3, 0, 2, 0, 2, 0, 1, 0, 0, 0], "2,2,1": [3, 0, 2, 0, 2, 0, 1, 0, 1, 0], "0,3,1": [3, 0, 2, 0, 2, 0, 2, 0, 0, 0], "1,3,1": [3, 0, 2, 0, 2, 0, 2, 0, 1, 0], "0,4,1": [3, 0, 2, 0, 2, 0, 2, 0, 2, 0], "0,0,2": [3, 0, 3, 0, 0, 0, 0, 0, 0, 0], "1,0,2": [3, 0, 3, 0, 1, 0, 0, 0, 0, 0], "2,0,2": [3, 0, 3, 0, 1, 0, 1, 0, 0, 0], "3,0,2": [3, 0, 3, 0, 1, 0, 1, 0, 1, 0], "0,1,2": [3, 0, 3, 0, 2, 0, 0, 0, 0, 0], "1,1,2": [3, 0, 3, 0, 2, 0, 1, 0, 0, 0], "2,1,2": [3, 0, 3, 0, 2, 0, 1, 0, 1, 0], "0,2,2": [3, 0, 3, 0, 2, 0, 2, 0, 0, 0], "1,2,2": [3, 0, 3, 0, 2, 0, 2, 0, 1, 0], "0,3,2": [3, 0, 3, 0, 2, 0, 2, 0, 2, 0], "0,0,3": [3, 0, 3, 0, 3, 0, 0, 0, 0, 0], "1,0,3": [3, 0, 3, 0, 3, 0, 1, 0, 0, 0], "2,0,3": [3, 0, 3, 0, 3, 0, 1, 0, 1, 0], "0,1,3": [3, 0, 3, 0, 3, 0, 2, 0, 0, 0], "1,1,3": [3, 0, 3, 0, 3, 0, 2, 0, 1, 0], "0,2,3": [3, 0, 3, 0, 3, 0, 2, 0, 2, 0], "0,0,4": [3, 0, 3, 0, 3, 0, 3, 0, 0, 0], "1,0,4": [3, 0, 3, 0, 3, 0, 3, 0, 1, 0], "0,1,4": [3, 0, 3, 0, 3, 0, 3, 0, 2, 0], "0,0,5": [3, 0, 3, 0, 3, 0, 3, 0, 3, 0]}}, "4,9": {"nPaths": 29056, "byWeight": {"0": 1, "8": 17, "16": 94, "24": 283, "32": 576, "7": 12, "15": 77, "23": 249, "31": 532, "14": 65, "22": 223, "30": 497, "21": 194, "29": 454, "28": 421, "6": 9, "38": 793, "13": 52, "37": 756, "20": 172, "36": 728, "27": 380, "35": 686, "12": 44, "44": 909, "19": 147, "43": 894, "26": 348, "34": 653, "42": 887, "18": 129, "50": 851, "25": 311, "33": 610, "41": 863, "49": 867, "40": 848, "48": 891, "56": 632, "5": 6, "11": 34, "17": 108, "39": 817, "47": 897, "55": 670, "46": 910, "54": 718, "10": 28, "45": 906, "53": 751, "52": 793, "51": 818, "4": 5, "60": 443, "9": 21, "59": 485, "58": 538, "57": 580, "64": 264, "63": 301, "62": 349, "61": 390, "68": 128, "67": 153, "66": 189, "65": 221, "72": 46, "3": 3, "71": 59, "70": 80, "69": 99, "2": 2, "74": 23, "73": 31, "76": 10, "75": 14, "78": 3, "77": 5, "80": 1, "1": 1, "79": 1}, "minimal": {"0,0,0,0": [0, 0, 0, 0, 0, 0, 0, 0], "1,0,0,0": [1, 0, 0, 0, 0, 0, 0, 0], "2,0,0,0": [1, 0, 1, 0, 0, 0, 0, 0], "3,0,0,0": [1, 0, 1, 0, 1, 0, 0, 0], "4,0,0,0": [1, 0, 1, 0, 1, 0, 1, 0], "0,1,0,0": [2, 0, 0, 0, 0, 0, 0, 0], "1,1,0,0": [2, 0, 1, 0, 0, 0, 0, 0], "2,1,0,0": [2, 0, 1, 0, 1, 0, 0, 0], "3,1,0,0": [2, 0, 1, 0, 1, 0, 1, 0], "0,2,0,0": [2, 0, 2, 0, 0, 0, 0, 0], "1,2,0,0": [2, 0, 2, 0, 1, 0, 0, 0], "2,2,0,0": [2, 0, 2, 0, 1, 0, 1, 0], "0,3,0,0": [2, 0, 2, 0, 2, 0, 0, 0], "1,3,0,0": [2, 0, 2, 0, 2, 0, 1, 0], "0,4,0,0": [2, 0, 2, 0, 2, 0, 2, 0], "0,0,1,0": [3, 0, 0, 0, 0, 0, 0, 0], "1,0,1,0": [3, 0, 1, 0, 0, 0, 0, 0], "2,0,1,0": [3, 0, 1, 0, 1, 0, 0, 0], "3,0,1,0": [3, 0, 1, 0, 1, 0, 1, 0], "0,1,1,0": [3, 0, 2, 0, 0, 0, 0, 0], "1,1,1,0": [3, 0, 2, 0, 1, 0, 0, 0], "2,1,1,0": [3, 0, 2, 0, 1, 0, 1, 0], "0,2,1,0": [3, 0, 2, 0, 2, 0, 0, 0], "1,2,1,0": [3, 0, 2, 0, 2, 0, 1, 0], "0,3,1,0": [3, 0, 2, 0, 2, 0, 2, 0], "0,0,2,0": [3, 0, 3, 0, 0, 0, 0, 0], "1,0,2,0": [3, 0, 3, 0, 1, 0, 0, 0], "2,0,2,0": [3, 0, 3, 0, 1, 0, 1, 0], "0,1,2,0": [3, 0, 3, 0, 2, 0, 0, 0], "1,1,2,0": [3, 0, 3, 0, 2, 0, 1, 0], "0,2,2,0": [3, 0, 3, 0, 2, 0, 2, 0], "0,0,3,0": [3, 0, 3, 0, 3, 0, 0, 0], "1,0,3,0": [3, 0, 3, 0, 3, 0, 1, 0], "0,1,3,0": [3, 0, 3, 0, 3, 0, 2, 0], "0,0,4,0": [3, 0, 3, 0, 3, 0, 3, 0], "0,0,0,1": [4, 0, 0, 0, 0, 0, 0, 0], "1,0,0,1": [4, 0, 1, 0, 0, 0, 0, 0], "2,0,0,1": [4, 0, 1, 0, 1, 0, 0, 0], "3,0,0,1": [4, 0, 1, 0, 1, 0, 1, 0], "0,1,0,1": [4, 0, 2, 0, 0, 0, 0, 0], "1,1,0,1": [4, 0, 2, 0, 1, 0, 0, 0], "2,1,0,1": [4, 0, 2, 0, 1, 0, 1, 0], "0,2,0,1": [4, 0, 2, 0, 2, 0, 0, 0], "1,2,0,1": [4, 0, 2, 0, 2, 0, 1, 0], "0,3,0,1": [4, 0, 2, 0, 2, 0, 2, 0], "0,0,1,1": [4, 0, 3, 0, 0, 0, 0, 0], "1,0,1,1": [4, 0, 3, 0, 1, 0, 0, 0], "2,0,1,1": [4, 0, 3, 0, 1, 0, 1, 0], "0,1,1,1": [4, 0, 3, 0, 2, 0, 0, 0], "1,1,1,1": [4, 0, 3, 0, 2, 0, 1, 0], "0,2,1,1": [4, 0, 3, 0, 2, 0, 2, 0], "0,0,2,1": [4, 0, 3, 0, 3, 0, 0, 0], "1,0,2,1": [4, 0, 3, 0, 3, 0, 1, 0], "0,1,2,1": [4, 0, 3, 0, 3, 0, 2, 0], "0,0,3,1": [4, 0, 3, 0, 3, 0, 3, 0], "0,0,0,2": [4, 0, 4, 0, 0, 0, 0, 0], "1,0,0,2": [4, 0, 4, 0, 1, 0, 0, 0], "2,0,0,2": [4, 0, 4, 0, 1, 0, 1, 0], "0,1,0,2": [4, 0, 4, 0, 2, 0, 0, 0], "1,1,0,2": [4, 0, 4, 0, 2, 0, 1, 0], "0,2,0,2": [4, 0, 4, 0, 2, 0, 2, 0], "0,0,1,2": [4, 0, 4, 0, 3, 0, 0, 0], "1,0,1,2": [4, 0, 4, 0, 3, 0, 1, 0], "0,1,1,2": [4, 0, 4, 0, 3, 0, 2, 0], "0,0,2,2": [4, 0, 4, 0, 3, 0, 3, 0], "0,0,0,3": [4, 0, 4, 0, 4, 0, 0, 0], "1,0,0,3": [4, 0, 4, 0, 4, 0, 1, 0], "0,1,0,3": [4, 0, 4, 0, 4, 0, 2, 0], "0,0,1,3": [4, 0, 4, 0, 4, 0, 3, 0], "0,0,0,4": [4, 0, 4, 0, 4, 0, 4, 0]}}};
+const PAIRS = {};
+for (const key of Object.keys(REF)) {
+  const [a, b] = key.split(',').map(Number);
+  (PAIRS[a] = PAIRS[a] || []).push(b);
+}
+
+const APP = {
+  K: 2, L: 9,
+  PATHS: [], ENUM: null, SECTORS: [],
+  filter: 'all', FILTERED: [], idx: 0,
+  FRAMES: null, FIDX: 0, timer: null,
+};
+const $ = id => document.getElementById(id);
+const key = f => f.join(',');
+
+function setupSelectors() {
+  $('k').innerHTML = Object.keys(PAIRS)
+    .map(v => `<option ${+v === APP.K ? 'selected' : ''}>${v}</option>`).join('');
+  fillL();
+}
+function fillL() {
+  const opts = PAIRS[APP.K] || [];
+  if (!opts.includes(APP.L)) APP.L = opts[Math.min(1, opts.length - 1)];
+  $('L').innerHTML = opts
+    .map(v => `<option ${v === APP.L ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+function rebuild() {
+  const { K, L } = APP;
+  APP.PATHS = allPaths(K, L);
+  const t0 = Date.now();
+  APP.ENUM = motionEnumerate(K, L);
+  APP.enumMs = Date.now() - t0;
+  // sectors
+  const by = new Map();
+  for (const [fk, v] of APP.ENUM.map) {
+    const c = v.n.join(',');
+    if (!by.has(c)) by.set(c, []);
+    by.get(c).push(fk);
+  }
+  APP.SECTORS = [...by.entries()].map(([c, fks]) => {
+    const n = c.split(',').map(Number);
+    const m = mSystem(K, L, n);
+    let poly = null, ok = false;
+    if (m) {
+      poly = [1];
+      for (let t = 1; t <= K; t++) poly = polyMul(poly, gaussPoly(m[t - 1], n[t - 1]));
+      const w0 = wMin(n), cnt = {};
+      for (const fk of fks) {
+        const d = weight(fk.split(',').map(Number)) - w0;
+        cnt[d] = (cnt[d] || 0) + 1;
+      }
+      ok = poly.every((c2, d) => (cnt[d] || 0) === c2)
+        && Object.keys(cnt).every(d => +d >= 0 && +d < poly.length);
+    }
+    return { c, n, m, count: fks.length, ok, paths: fks };
+  }).sort((a, b) => a.c < b.c ? -1 : 1);
+  APP.filter = 'all';
+  applyFilter();
+  renderChecks(); renderSectors(); renderProp5(); fillSectorSelect();
+}
+
+function applyFilter() {
+  const { PATHS } = APP;
+  if (APP.filter === 'all') APP.FILTERED = PATHS.map(key);
+  else {
+    const s = APP.SECTORS.find(s => s.c === APP.filter);
+    APP.FILTERED = s ? s.paths.slice().sort((a, b) => {
+      const wa = weight(a.split(',').map(Number)), wb = weight(b.split(',').map(Number));
+      return wa - wb || (a < b ? -1 : 1);
+    }) : [];
+  }
+  APP.idx = Math.min(APP.idx, Math.max(0, APP.FILTERED.length - 1));
+  $('pathIdx').max = Math.max(0, APP.FILTERED.length - 1);
+  $('pathIdx').value = APP.idx;
+  selectPath(APP.idx);
+}
+
+function fillSectorSelect() {
+  $('sector').innerHTML = '<option value="all">all contents</option>' +
+    APP.SECTORS.map(s =>
+      `<option value="${s.c}" ${APP.filter === s.c ? 'selected' : ''}>n = (${s.c}) — ${s.count}</option>`).join('');
+}
+
+function selectPath(i) {
+  APP.idx = i;
+  const fk = APP.FILTERED[i];
+  if (fk === undefined) { APP.FRAMES = null; draw(); return; }
+  const info = APP.ENUM.map.get(fk);
+  APP.FRAMES = replayFrames(APP.K, APP.L, info.n, info.ev);
+  APP.FIDX = APP.FRAMES.length - 1;
+  draw();
+}
+
+function draw() {
+  const cv = $('cv'), g = cv.getContext('2d');
+  const { K, L } = APP;
+  g.clearRect(0, 0, cv.width, cv.height);
+  if (!APP.FRAMES) { $('pathTxt').textContent = ''; return; }
+  const fr = APP.FRAMES[APP.FIDX];
+  const h = frameHeights(fr, L);
+  const padL = 52, padB = 42, padT = 18, n = L - 1;
+  const cw = Math.min(56, (cv.width - padL - 30) / n),
+        ch = (cv.height - padB - padT) / (K + 1);
+  g.strokeStyle = '#272b34'; g.lineWidth = 1; g.beginPath();
+  g.moveTo(padL, padT); g.lineTo(padL, cv.height - padB);
+  g.lineTo(padL + n * cw, cv.height - padB); g.stroke();
+  g.fillStyle = '#9aa1ac'; g.font = '11px ui-monospace,Menlo,monospace';
+  for (let hh = 0; hh <= K; hh++) {
+    const y = cv.height - padB - hh * ch;
+    g.fillText(String(hh), padL - 22, y + 4);
+    g.strokeStyle = '#1c2027'; g.beginPath();
+    g.moveTo(padL, y); g.lineTo(padL + n * cw, y); g.stroke();
+  }
+  for (let j = 1; j <= n; j++)
+    g.fillText(String(j), padL + (j - .5) * cw - 3, cv.height - padB + 16);
+  g.fillStyle = '#9aa1ac'; g.font = '12px system-ui';
+  g.fillText('f', 18, padT + 10);
+  g.fillText('part value j', padL + n * cw / 2 - 34, cv.height - 10);
+  // background portion (grey), mover portion (accent) on top
+  const bar = (c, y0, amt, color, outline) => {
+    if (amt <= 0) return;
+    g.fillStyle = color;
+    g.fillRect(padL + (c - 1) * cw + 3, cv.height - padB - (y0 + amt) * ch + 2,
+               cw - 6, amt * ch - 3);
+    g.strokeStyle = outline; 
+    g.strokeRect(padL + (c - 1) * cw + 3, cv.height - padB - (y0 + amt) * ch + 2,
+                 cw - 6, amt * ch - 3);
+  };
+  for (let c = 1; c <= n; c++) bar(c, 0, fr.bg[c - 1], '#39414f', '#0b0d11');
+  if (fr.mover) {
+    const { t, x, r } = fr.mover;
+    bar(x, fr.bg[x - 1], t - r, '#7cc4ff', '#0b0d11');
+    if (r && x + 1 <= n) bar(x + 1, fr.bg[x], r, '#7cc4ff', '#0b0d11');
+  }
+  const fk = APP.FILTERED[APP.idx];
+  const info = APP.ENUM.map.get(fk);
+  $('pathTxt').textContent = 'f = (' + fk.split(',').join(', ') + ')';
+  const f = fk.split(',').map(Number);
+  const evTxt = info.ev.length ? 'e = [' + info.ev.join(', ') + ']' : '';
+  $('pathInfo').innerHTML =
+    `|&lambda;| = ${weight(f)} &nbsp;&middot;&nbsp; content n = (${info.n.join(',')})` +
+    ` &nbsp;&middot;&nbsp; path ${APP.idx + 1} of ${APP.FILTERED.length}` +
+    (evTxt ? `<br><span class="mono">${evTxt}</span>` : '');
+  $('frameNote').innerHTML =
+    `<b>frame ${APP.FIDX + 1} / ${APP.FRAMES.length}</b> &mdash; ${APP.FRAMES[APP.FIDX].note}`;
+}
+
+function renderChecks() {
+  const { K, L, PATHS, ENUM } = APP;
+  const R = REF[K + ',' + L];
+  const missing = PATHS.filter(f => !ENUM.map.has(key(f))).length;
+  const allSec = APP.SECTORS.every(s => s.ok);
+  const rows = [];
+  const pill = (ok, t) => `<span class="pill ${ok ? 'ok' : 'no'}">${ok ? '&#10003;' : '&#10007;'} ${t}</span>`;
+  rows.push(pill(ENUM.dup.length === 0 && missing === 0,
+    `Prop 4 live: ${ENUM.map.size} paths, each exactly once` +
+    (ENUM.dup.length || missing ? ` (dup ${ENUM.dup.length}, missing ${missing})` : '')));
+  rows.push(pill(allSec, `Prop 5 live: all ${APP.SECTORS.length} sector polynomials match`));
+  if (R) rows.push(pill(PATHS.length === R.nPaths,
+    `Python reference: ${PATHS.length} = ${R.nPaths} paths`));
+  rows.push(`<span class="pill">enumerated in ${APP.enumMs} ms</span>`);
+  $('checks').innerHTML = rows.join('<br>');
+}
+
+function renderSectors() {
+  const box = $('sectors'); box.innerHTML = '';
+  for (const s of APP.SECTORS) {
+    const d = document.createElement('div');
+    d.className = 'sec' + (APP.filter === s.c ? ' active' : '');
+    d.innerHTML = `<b class="mono">n = (${s.c})</b>` +
+      ` <span class="${s.ok ? 'okt' : 'not'}">${s.ok ? '&#10003;' : '&#10007;'}</span><br>` +
+      `<span class="note">${s.count} paths &middot; m = (${s.m ? s.m.join(',') : '?'})</span>`;
+    d.onclick = () => { APP.filter = (APP.filter === s.c ? 'all' : s.c);
+      APP.idx = 0; applyFilter(); fillSectorSelect(); renderSectors(); };
+    box.appendChild(d);
+  }
+  $('sectorMsg').innerHTML = APP.SECTORS.every(s => s.ok)
+    ? `<div class="flag ok">Every sector's generating function equals q<sup>n&middot;C&#8315;&sup1;&middot;n</sup> &prod;<sub>t</sub> [n<sub>t</sub>+m<sub>t</sub>; n<sub>t</sub>]<sub>q</sub> &mdash; Proposition 5, verified live in this window.</div>`
+    : `<div class="flag no">Some sector does not match the fermionic formula &mdash; that would be a real discovery; check the code first.</div>`;
+}
+
+function renderProp5() {
+  const { K, L, PATHS, ENUM } = APP;
+  const R = REF[K + ',' + L];
+  const bru = {}, mot = {};
+  for (const f of PATHS) { const w = weight(f); bru[w] = (bru[w] || 0) + 1; }
+  for (const fk of ENUM.map.keys()) {
+    const w = weight(fk.split(',').map(Number)); mot[w] = (mot[w] || 0) + 1;
+  }
+  const ws = Object.keys(bru).map(Number).sort((a, b) => a - b).slice(0, 14);
+  let h = '<tr><th>|&lambda;|</th>' + ws.map(w => `<th>${w}</th>`).join('') + '</tr>';
+  h += '<tr><td>all valid paths</td>' + ws.map(w => `<td>${bru[w] || 0}</td>`).join('') + '</tr>';
+  h += '<tr><td>rules of motion</td>' + ws.map(w => `<td>${mot[w] || 0}</td>`).join('') + '</tr>';
+  if (R) h += '<tr><td>Python reference</td>' + ws.map(w => `<td>${R.byWeight[w] || 0}</td>`).join('') + '</tr>';
+  const ok = ws.every(w => (bru[w] || 0) === (mot[w] || 0) && (!R || (R.byWeight[w] || 0) === (bru[w] || 0)));
+  h += `<tr><td colspan="${ws.length + 1}" style="text-align:left;color:${ok ? 'var(--good)' : 'var(--bad)'}">${ok ? '&#10003; three independent counts agree' : '&#10007; mismatch'}</td></tr>`;
+  $('prop5').innerHTML = h;
+}
+
+/* ---------- animation controls ---------- */
+function stopPlay() { if (APP.timer) { clearInterval(APP.timer); APP.timer = null;
+  $('playF').textContent = 'play build ▶'; $('playR').textContent = '◀ play reduce'; } }
+function step(d) { if (!APP.FRAMES) return;
+  APP.FIDX = Math.max(0, Math.min(APP.FRAMES.length - 1, APP.FIDX + d)); draw(); }
+function play(dir, btn, label) {
+  if (APP.timer) { stopPlay(); return; }
+  btn.textContent = '❚❚ stop';
+  APP.timer = setInterval(() => {
+    const before = APP.FIDX; step(dir);
+    if (APP.FIDX === before) stopPlay();
+  }, 380);
+}
+
+function init() {
+  setupSelectors();
+  rebuild();
+  $('k').onchange = e => { stopPlay(); APP.K = +e.target.value; APP.idx = 0; fillL(); rebuild(); };
+  $('L').onchange = e => { stopPlay(); APP.L = +e.target.value; APP.idx = 0; rebuild(); };
+  $('sector').onchange = e => { stopPlay(); APP.filter = e.target.value; APP.idx = 0;
+    applyFilter(); renderSectors(); };
+  $('pathIdx').oninput = e => { stopPlay(); selectPath(+e.target.value); };
+  $('prev').onclick = () => { stopPlay(); if (APP.idx > 0) { APP.idx--; $('pathIdx').value = APP.idx; selectPath(APP.idx); } };
+  $('next').onclick = () => { stopPlay(); if (APP.idx < APP.FILTERED.length - 1) { APP.idx++; $('pathIdx').value = APP.idx; selectPath(APP.idx); } };
+  $('rand').onclick = () => { stopPlay(); const i = Math.floor(Math.random() * APP.FILTERED.length);
+    APP.idx = i; $('pathIdx').value = i; selectPath(i); };
+  $('toStart').onclick = () => { stopPlay(); APP.FIDX = 0; draw(); };
+  $('toEnd').onclick = () => { stopPlay(); if (APP.FRAMES) { APP.FIDX = APP.FRAMES.length - 1; draw(); } };
+  $('back').onclick = () => { stopPlay(); step(-1); };
+  $('fwd').onclick = () => { stopPlay(); step(1); };
+  $('playF').onclick = () => play(1, $('playF'));
+  $('playR').onclick = () => play(-1, $('playR'));
+  if (typeof document.addEventListener === 'function')
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') { stopPlay(); step(-1); }
+      if (e.key === 'ArrowRight') { stopPlay(); step(1); }
+    });
+}
+
+init();
+</script>
